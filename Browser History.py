@@ -3,7 +3,6 @@ from collections import Counter
 from datetime import datetime
 from urllib.parse import urlparse
 
-# Глобальные переменные (history не требует global, если мы её только мутируем)
 history = []
 current_index = -1
 
@@ -19,7 +18,7 @@ def add_page():
     bookmark_input = input("Это закладка? да/нет: ")
     is_bookmark = bookmark_input.lower() == "да"
 
-    # Срезаем историю, если мы возвращались назад
+   
     if current_index < len(history) - 1:
         history = history[:current_index + 1]
 
@@ -32,7 +31,7 @@ def add_page():
     print("Страница добавлена.")
 
 def navigate(direction):
-    """Объединенная функция для переходов Назад (-1) и Вперед (+1)"""
+    
     global current_index
 
     if not history:
@@ -86,13 +85,13 @@ def top_transitions():
         print("Ошибка: введите целое число.")
         return
 
-    # Создаем список всех переходов
+    
     transitions = [
         f"{get_domain(history[i]['url'])} -> {get_domain(history[i+1]['url'])}"
         for i in range(len(history) - 1)
     ]
     
-    # Counter сам всё посчитает и вернет N самых частых
+   
     print("Топ переходов:")
     for transition, count in Counter(transitions).most_common(n):
         print(f"{transition} - {count} раз(а)")
@@ -107,8 +106,7 @@ def show_history():
         print(f"{i + 1} {record} {mark}".strip())
 
 def menu():
-    # Словарь сопоставления выбора и функций (для версий Python ниже 3.10)
-    # Или можно использовать современный match/case, как показано ниже:
+   
     while True:
         print("\n--- История браузера ---")
         print("1. Добавить страницу\n2. Назад\n3. Вперёд\n4. Очистить историю")
@@ -119,7 +117,7 @@ def menu():
 
         match choice:
             case "1": add_page()
-            case "2": navigate(-1) # Объединили go_back и go_forward
+            case "2": navigate(-1) 
             case "3": navigate(1)
             case "4": clear_history()
             case "5": search_by_domain()
