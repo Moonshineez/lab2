@@ -20,7 +20,7 @@ def add_page():
 
     is_bookmark = bookmark_input.lower() == "да"
 
-    # Если мы были не в конце истории, удаляем всё, что было впереди
+    
     if current_index < len(history) - 1:
         history = history[:current_index + 1]
 
