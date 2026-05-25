@@ -1,5 +1,4 @@
 import base64
-from collections import Counter
 from datetime import datetime
 from urllib.parse import urlparse
 
@@ -9,123 +8,200 @@ current_index = -1
 def get_domain(url):
     if not url.startswith("http"):
         url = "https://" + url
-    return urlparse(url).netloc
+
+    parsed = urlparse(url)
+    return parsed.netloc
 
 def add_page():
     global current_index, history
 
     url = input("Введите URL: ")
     bookmark_input = input("Это закладка? да/нет: ")
+
     is_bookmark = bookmark_input.lower() == "да"
 
-   
     if current_index < len(history) - 1:
         history = history[:current_index + 1]
 
-    history.append({
+    record = {
         "url": url,
         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "bookmark": is_bookmark
-    })
+    }
+
+    history.append(record)
     current_index = len(history) - 1
+
     print("Страница добавлена.")
 
-def navigate(direction):
-    
+def go_back():
     global current_index
 
-    if not history:
+    if len(history) == 0:
         print("История пуста.")
-        return
-
-    new_index = current_index + direction
-    if 0 <= new_index < len(history):
-        current_index = new_index
-        print("Текущая страница:", history[current_index])
+    elif current_index == 0:
+        print("Назад идти нельзя.")
     else:
-        print("Вперёд идти нельзя." if direction == 1 else "Назад идти нельзя.")
+        current_index -= 1
+        print("Текущая страница:")
+        print(history[current_index])
+
+def go_forward():
+    global current_index
+
+    if len(history) == 0:
+        print("История пуста.")
+    elif current_index == len(history) - 1:
+        print("Вперёд идти нельзя.")
+    else:
+        current_index += 1
+        print("Текущая страница:")
+        print(history[current_index])
 
 def clear_history():
-    global current_index
-    history.clear()  # global не нужен, так как список мутирует clear(), а не переприсваивается
+    global current_index, history
+
+    history.clear()
     current_index = -1
     print("История очищена.")
 
 def search_by_domain():
-    if not history:
+    if len(history) == 0:
         print("История пуста.")
         return
 
     domain = input("Введите домен для поиска: ")
-    found = [record for record in history if domain in get_domain(record["url"])]
 
-    if found:
-        for record in found:
+    found = False
+
+    for record in history:
+        if domain in get_domain(record["url"]):
             print(record)
-    else:
+            found = True
+
+    if not found:
         print("Ничего не найдено.")
 
 def save_to_file():
     filename = input("Введите имя файла: ")
+
     with open(filename, "w", encoding="utf-8") as file:
         for record in history:
-            line = f"{record['url']}|{record['time']}|{record['bookmark']}"
+            line = record["url"] + "|" + record["time"] + "|" + str(record["bookmark"])
             encoded_line = base64.b64encode(line.encode("utf-8")).decode("utf-8")
             file.write(encoded_line + "\n")
+
     print("История сохранена в файл.")
+
+def load_from_file():
+    global current_index, history
+    
+    filename = input("Введите имя файла для загрузки: ")
+    
+    try:
+        with open(filename, "r", encoding="utf-8") as file:
+            new_history = []
+            for line in file:
+                line = line.strip()
+                if not line:
+                    continue
+                decoded = base64.b64decode(line).decode("utf-8")
+                url, time_str, bookmark = decoded.split("|")
+                new_history.append({
+                    "url": url,
+                    "time": time_str,
+                    "bookmark": bookmark == "True"
+                })
+            history = new_history
+            current_index = len(history) - 1 if history else -1
+            print("История загружена из файла.")
+    except FileNotFoundError:
+        print("Файл не найден.")
+    except Exception as e:
+        print("Ошибка при загрузке файла:", e)
 
 def top_transitions():
     if len(history) < 2:
         print("Недостаточно записей.")
         return
 
-    try:
-        n = int(input("Введите N: "))
-    except ValueError:
-        print("Ошибка: введите целое число.")
-        return
+    n = int(input("Введите N: "))
 
-    
-    transitions = [
-        f"{get_domain(history[i]['url'])} -> {get_domain(history[i+1]['url'])}"
-        for i in range(len(history) - 1)
-    ]
-    
-   
+    transitions = {}
+
+    for i in range(len(history) - 1):
+        domain1 = get_domain(history[i]["url"])
+        domain2 = get_domain(history[i + 1]["url"])
+
+        transition = domain1 + " -> " + domain2
+
+        if transition not in transitions:
+            transitions[transition] = 1
+        else:
+            transitions[transition] += 1
+
+    sorted_transitions = sorted(
+        transitions.items(),
+        key=lambda item: item[1],
+        reverse=True
+    )
+
     print("Топ переходов:")
-    for transition, count in Counter(transitions).most_common(n):
-        print(f"{transition} - {count} раз(а)")
+
+    for i in range(min(n, len(sorted_transitions))):
+        print(sorted_transitions[i][0], "-", sorted_transitions[i][1], "раз(а)")
 
 def show_history():
-    if not history:
+    if len(history) == 0:
         print("История пуста.")
         return
 
-    for i, record in enumerate(history):
-        mark = "<-- текущая" if i == current_index else ""
-        print(f"{i + 1} {record} {mark}".strip())
+    for i in range(len(history)):
+        mark = ""
+
+        if i == current_index:
+            mark = "<-- текущая"
+
+        print(i + 1, history[i], mark)
 
 def menu():
-   
     while True:
         print("\n--- История браузера ---")
-        print("1. Добавить страницу\n2. Назад\n3. Вперёд\n4. Очистить историю")
-        print("5. Поиск по домену\n6. Показать историю\n7. Сохранить в Base64-файл")
-        print("8. Топ-N переходов\n0. Выход")
+        print("1. Добавить страницу")
+        print("2. Назад")
+        print("3. Вперёд")
+        print("4. Очистить историю")
+        print("5. Поиск по домену")
+        print("6. Показать историю")
+        print("7. Сохранить в Base64-файл")
+        print("8. Загрузить из Base64-файла")
+        print("9. Топ-N переходов")
+        print("0. Выход")
 
         choice = input("Выберите пункт: ")
 
-        match choice:
-            case "1": add_page()
-            case "2": navigate(-1) 
-            case "3": navigate(1)
-            case "4": clear_history()
-            case "5": search_by_domain()
-            case "6": show_history()
-            case "7": save_to_file()
-            case "8": top_transitions()
-            case "0": break
-            case _: print("Неверный пункт меню.")
+        if choice == "1":
+            add_page()
+        elif choice == "2":
+            go_back()
+        elif choice == "3":
+            go_forward()
+        elif choice == "4":
+            clear_history()
+        elif choice == "5":
+            search_by_domain()
+        elif choice == "6":
+            show_history()
+        elif choice == "7":
+            save_to_file()
+        elif choice == "8":
+            load_from_file()
+        elif choice == "9":
+            top_transitions()
+        elif choice == "0":
+            break
+        else:
+            print("Неверный пункт меню.")
 
-if __name__ == "__main__":
-    menu()
+menu()
+
